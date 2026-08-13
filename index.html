@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signing you in…</title>
+<style>
+  body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+         margin: 0; display: grid; place-items: center; min-height: 100vh; color: #1f1f1f; }
+  main { text-align: center; padding: 24px; max-width: 420px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  p { color: #5f6368; font-size: 14px; margin: 0 0 18px; }
+  a { display: inline-block; font-weight: 600; background: #1a73e8; color: #fff;
+      text-decoration: none; border-radius: 8px; padding: 11px 18px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Signing you in…</h1>
+  <p id="msg">One moment.</p>
+  <p><a id="go" href="#">Continue</a></p>
+</main>
+<script>
+  // Where the portal actually lives.
+  var PORTAL = 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec';
+
+  var incoming = new URLSearchParams(window.location.search);
+  var out = new URLSearchParams();
+
+  // Forward ONLY what the portal reads. Google also appends authuser, scope, iss
+  // and prompt; authuser in particular is part of what makes a direct redirect to
+  // script.google.com fail, and none of the rest is any of the portal's business.
+  ['state', 'code', 'error'].forEach(function (k) {
+    var v = incoming.get(k);
+    if (v) out.set(k, v);
+  });
+
+  if (!out.has('code') && !out.has('error')) {
+    document.getElementById('msg').textContent =
+      'This page is only used part-way through signing in. Open the portal instead.';
+    document.getElementById('go').href = PORTAL;
+  } else {
+    var target = PORTAL + '?' + out.toString();
+    document.getElementById('go').href = target;
+    // replace() rather than href= so this hop leaves no back-button trap.
+    window.location.replace(target);
+  }
+</script>
+</body>
+</html>
