@@ -20,8 +20,16 @@ router never engages.
 
 ## What it does
 
-Reads `state`, `code` and `error` from the query string and forwards only those to the
-portal. Everything else Google appends — `authuser`, `scope`, `iss`, `prompt` — is dropped.
+Reads `state`, `code` and `error` from the query string and forwards only those onward.
+Everything else Google appends — `authuser`, `scope`, `iss`, `prompt` — is dropped.
+
+`state` arrives as `<random>.<appKey>`. The app key selects a destination from a hardcoded
+**allowlist** in `index.html`; an unrecognised key is refused rather than guessed. The
+destination is never carried in the URL itself, because that would make this an open redirect
+— a page anyone could use to lend this domain's name to a phishing link.
+
+Adding another gated app is one line in that allowlist. It needs no change in the Google Cloud
+Console, because the registered redirect URI stays the same.
 
 ## What it does not do
 

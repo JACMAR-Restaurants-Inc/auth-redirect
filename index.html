@@ -21,8 +21,23 @@
   <p><a id="go" href="#">Continue</a></p>
 </main>
 <script>
-  // Where the portal actually lives.
-  var PORTAL = 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec';
+  // Where each app lives. An ALLOWLIST, deliberately: the destination is chosen by
+  // a key that arrives in `state`, and looking it up here means a crafted state can
+  // only ever select one of these. Carrying the destination itself in the URL would
+  // make this an open redirect, usable to lend our domain to a phishing link.
+  //
+  // Adding a gated app is one line here plus one line in the library. It needs no
+  // new registration in the Cloud Console, because the redirect URI never changes.
+  var DESTINATIONS = {
+    'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec'
+  };
+
+  // state is "<random>.<appKey>". The random half is what the app verifies; the
+  // key half is only routing, and is useless without the matching cache entry.
+  function destinationFor(state) {
+    var key = String(state || '').split('.')[1] || 'portal';
+    return DESTINATIONS[key] || '';
+  }
 
   var incoming = new URLSearchParams(window.location.search);
   var out = new URLSearchParams();
@@ -35,12 +50,20 @@
     if (v) out.set(k, v);
   });
 
+  var dest = destinationFor(incoming.get('state'));
+
   if (!out.has('code') && !out.has('error')) {
     document.getElementById('msg').textContent =
       'This page is only used part-way through signing in. Open the portal instead.';
-    document.getElementById('go').href = PORTAL;
+    document.getElementById('go').href = DESTINATIONS.portal;
+  } else if (!dest) {
+    // An unrecognised key. Refuse rather than guess - guessing is how an open
+    // redirect gets built by accident.
+    document.getElementById('msg').textContent =
+      'This sign-in link is not one we recognise. Please start again from the portal.';
+    document.getElementById('go').href = DESTINATIONS.portal;
   } else {
-    var target = PORTAL + '?' + out.toString();
+    var target = dest + '?' + out.toString();
     document.getElementById('go').href = target;
     // replace() rather than href= so this hop leaves no back-button trap.
     window.location.replace(target);
