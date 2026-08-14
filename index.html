@@ -29,7 +29,11 @@
   // Adding a gated app is one line here plus one line in the library. It needs no
   // new registration in the Cloud Console, because the redirect URI never changes.
   var DESTINATIONS = {
-    'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec'
+    'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
+    // Safe Count, Phase 5 TEST deployment. Points at the test script and the test
+    // spreadsheet - not the one Aylmer and Vanier use. Replace with the production
+    // URL at cutover; do not add a second key, or a stale one will outlive its purpose.
+    'safecount': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
   };
 
   // state is "<random>.<appKey>". The random half is what the app verifies; the
