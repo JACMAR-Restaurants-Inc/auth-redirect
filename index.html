@@ -36,12 +36,7 @@
   // as broken. A short "Signing you in…" reads as working. Being seen is the point.
   (function () {
     var DESTINATIONS = {
-      // EXPERIMENT 2026-08-17: the domain-scoped form. Signing in as a Workspace
-      // account failed on the return leg with "unable to open the file" - Google
-      // routes those through /a/macros/<domain>/, and that extra hop breaks under
-      // multi-login. Testing whether this form works for personal accounts too; if
-      // it does, one URL serves everyone and no routing branch is needed.
-      'portal': 'https://script.google.com/a/macros/jacmar-restaurants.com/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
+      'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
       // Safe Count, Phase 5 TEST deployment - the test script and test spreadsheet,
       // not the one Aylmer and Vanier use. Swap for production at cutover rather than
       // adding a second key, so a stale destination cannot outlive its purpose.
