@@ -94,11 +94,20 @@
       });
     });
 
-    // If we are somehow still here, offer the link rather than spinning forever.
+    // A last-resort link, not a progress report.
+    //
+    // At four seconds this fired during perfectly normal sign-ins: the navigation had
+    // been issued and the browser was simply waiting for the destination, which is an
+    // Apps Script cold start plus a token exchange. Announcing a problem that is not
+    // happening - and offering a Continue that repeats what is already underway - is
+    // worse than saying nothing.
+    //
+    // Twelve seconds is past the point where a working sign-in would still be
+    // waiting, and the wording no longer claims to know anything.
     setTimeout(function () {
       document.getElementById('fallback').style.display = 'block';
-      document.getElementById('msg').textContent = 'Taking longer than expected.';
-    }, 4000);
+      document.getElementById('msg').textContent = 'Still going. Use the button if nothing happens.';
+    }, 12000);
   })();
 </script>
 </body>
