@@ -4,22 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Signing you in…</title>
+<style>
+  body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+         margin: 0; display: grid; place-items: center; min-height: 100vh; color: #1f1f1f; }
+  main { text-align: center; padding: 24px; max-width: 420px; }
+  .spinner { width: 22px; height: 22px; margin: 0 auto 14px; border-radius: 50%;
+             border: 2px solid #dadce0; border-top-color: #1a73e8;
+             animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+  p  { color: #5f6368; font-size: 14px; margin: 0; }
+  #fallback { margin-top: 20px; display: none; }
+  a { display: inline-block; font-weight: 600; background: #1a73e8; color: #fff;
+      text-decoration: none; border-radius: 8px; padding: 11px 18px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="spinner" id="spinner"></div>
+  <h1 id="title">Signing you in…</h1>
+  <p id="msg">One moment.</p>
+  <p id="fallback"><a id="go" href="#">Continue</a></p>
+</main>
 
 <script>
-  // Deliberately in <head>, before any markup.
+  // The message is painted BEFORE the navigation is issued, deliberately.
   //
-  // This page exists only to forward, and the browser must never paint it in the
-  // normal case. Run at the end of <body> it rendered the whole card first, so a
-  // sign-in visibly passed through a page nobody needed to see. Here the navigation
-  // is issued before the body is parsed, so there is nothing to paint.
-  //
-  // The visible card below is what remains if this script does not navigate: an
-  // unrecognised link, or scripting disabled.
+  // An earlier version ran this in <head> so the browser never painted at all. That
+  // was the wrong goal: the hop to this host is a real network round trip, so
+  // "never paint" means a blank white screen for as long as it takes - which reads
+  // as broken. A short "Signing you in…" reads as working. Being seen is the point.
   (function () {
-    // Where each app lives. An ALLOWLIST: the destination is chosen by a key that
-    // arrives in `state`, and looking it up here means a crafted state can only ever
-    // select one of these. Carrying the destination in the URL itself would make this
-    // an open redirect, usable to lend our domain to a phishing link.
     var DESTINATIONS = {
       'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
       // Safe Count, Phase 5 TEST deployment - the test script and test spreadsheet,
@@ -33,7 +48,7 @@
 
     // Forward ONLY what the app reads. Google also appends authuser, scope, iss and
     // prompt; authuser is part of what makes a direct redirect to script.google.com
-    // fail (see the README), and none of the rest is any of the app's business.
+    // fail (see the README), and none of the rest is the app's business.
     ['state', 'code', 'error'].forEach(function (k) {
       var v = incoming.get(k);
       if (v) out.set(k, v);
@@ -41,46 +56,50 @@
 
     // state is "<random>.<appKey>". The random half is what the app verifies; the key
     // half is only routing, and is useless without the matching server-side entry.
+    // An ALLOWLIST, not a URL from the query string - carrying the destination in the
+    // URL would make this an open redirect, usable to lend our domain to a phishing
+    // link.
     var key  = String(incoming.get('state') || '').split('.')[1] || 'portal';
     var dest = DESTINATIONS[key] || '';
 
-    window.__FALLBACK = DESTINATIONS.portal;
-
-    if ((out.has('code') || out.has('error')) && dest) {
-      // replace() rather than href= so this hop leaves no back-button trap.
-      window.location.replace(dest + '?' + out.toString());
-      window.__FORWARDING = true;
-    } else if (!dest) {
-      // An unrecognised key. Refuse rather than guess - guessing is how an open
-      // redirect gets built by accident.
-      window.__MESSAGE = 'This sign-in link is not one we recognise. Please start again.';
-    } else {
-      window.__MESSAGE = 'This page is only used part-way through signing in.';
+    function stop(title, message) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('title').textContent = title;
+      document.getElementById('msg').textContent = message;
+      document.getElementById('go').href = DESTINATIONS.portal;
+      document.getElementById('fallback').style.display = 'block';
     }
-  })();
-</script>
 
-<style>
-  body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-         margin: 0; display: grid; place-items: center; min-height: 100vh; color: #1f1f1f; }
-  main { text-align: center; padding: 24px; max-width: 420px; }
-  h1 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
-  p { color: #5f6368; font-size: 14px; margin: 0 0 18px; }
-  a { display: inline-block; font-weight: 600; background: #1a73e8; color: #fff;
-      text-decoration: none; border-radius: 8px; padding: 11px 18px; }
-</style>
-</head>
-<body>
-<main>
-  <h1>Signing you in…</h1>
-  <p id="msg">One moment.</p>
-  <p><a id="go" href="#">Continue</a></p>
-</main>
-<script>
-  // Only ever seen if the navigation above did not happen.
-  var go = document.getElementById('go');
-  go.href = window.__FALLBACK;
-  if (window.__MESSAGE) document.getElementById('msg').textContent = window.__MESSAGE;
+    if (!out.has('code') && !out.has('error')) {
+      stop('Nothing to do here', 'This page is only used part-way through signing in.');
+      return;
+    }
+    if (!dest) {
+      // Unrecognised key: refuse rather than guess. Guessing is how an open redirect
+      // gets built by accident.
+      stop('Link not recognised', 'Please start again from the app you were opening.');
+      return;
+    }
+
+    var target = dest + '?' + out.toString();
+    document.getElementById('go').href = target;
+
+    // Two frames guarantees the message above has actually been painted before the
+    // browser starts tearing the page down. One frame is not enough on every engine,
+    // and the cost is a few milliseconds against a hop that takes far longer.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        // replace() rather than href= so this hop leaves no back-button trap.
+        window.location.replace(target);
+      });
+    });
+
+    // If we are somehow still here, offer the link rather than spinning forever.
+    setTimeout(function () {
+      document.getElementById('fallback').style.display = 'block';
+      document.getElementById('msg').textContent = 'Taking longer than expected.';
+    }, 4000);
+  })();
 </script>
 </body>
 </html>
