@@ -4,6 +4,62 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Signing you in…</title>
+
+<script>
+  // Deliberately in <head>, before any markup.
+  //
+  // This page exists only to forward, and the browser must never paint it in the
+  // normal case. Run at the end of <body> it rendered the whole card first, so a
+  // sign-in visibly passed through a page nobody needed to see. Here the navigation
+  // is issued before the body is parsed, so there is nothing to paint.
+  //
+  // The visible card below is what remains if this script does not navigate: an
+  // unrecognised link, or scripting disabled.
+  (function () {
+    // Where each app lives. An ALLOWLIST: the destination is chosen by a key that
+    // arrives in `state`, and looking it up here means a crafted state can only ever
+    // select one of these. Carrying the destination in the URL itself would make this
+    // an open redirect, usable to lend our domain to a phishing link.
+    var DESTINATIONS = {
+      'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
+      // Safe Count, Phase 5 TEST deployment - the test script and test spreadsheet,
+      // not the one Aylmer and Vanier use. Swap for production at cutover rather than
+      // adding a second key, so a stale destination cannot outlive its purpose.
+      'safecount': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
+    };
+
+    var incoming = new URLSearchParams(window.location.search);
+    var out = new URLSearchParams();
+
+    // Forward ONLY what the app reads. Google also appends authuser, scope, iss and
+    // prompt; authuser is part of what makes a direct redirect to script.google.com
+    // fail (see the README), and none of the rest is any of the app's business.
+    ['state', 'code', 'error'].forEach(function (k) {
+      var v = incoming.get(k);
+      if (v) out.set(k, v);
+    });
+
+    // state is "<random>.<appKey>". The random half is what the app verifies; the key
+    // half is only routing, and is useless without the matching server-side entry.
+    var key  = String(incoming.get('state') || '').split('.')[1] || 'portal';
+    var dest = DESTINATIONS[key] || '';
+
+    window.__FALLBACK = DESTINATIONS.portal;
+
+    if ((out.has('code') || out.has('error')) && dest) {
+      // replace() rather than href= so this hop leaves no back-button trap.
+      window.location.replace(dest + '?' + out.toString());
+      window.__FORWARDING = true;
+    } else if (!dest) {
+      // An unrecognised key. Refuse rather than guess - guessing is how an open
+      // redirect gets built by accident.
+      window.__MESSAGE = 'This sign-in link is not one we recognise. Please start again.';
+    } else {
+      window.__MESSAGE = 'This page is only used part-way through signing in.';
+    }
+  })();
+</script>
+
 <style>
   body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
          margin: 0; display: grid; place-items: center; min-height: 100vh; color: #1f1f1f; }
@@ -21,57 +77,10 @@
   <p><a id="go" href="#">Continue</a></p>
 </main>
 <script>
-  // Where each app lives. An ALLOWLIST, deliberately: the destination is chosen by
-  // a key that arrives in `state`, and looking it up here means a crafted state can
-  // only ever select one of these. Carrying the destination itself in the URL would
-  // make this an open redirect, usable to lend our domain to a phishing link.
-  //
-  // Adding a gated app is one line here plus one line in the library. It needs no
-  // new registration in the Cloud Console, because the redirect URI never changes.
-  var DESTINATIONS = {
-    'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
-    // Safe Count, Phase 5 TEST deployment. Points at the test script and the test
-    // spreadsheet - not the one Aylmer and Vanier use. Replace with the production
-    // URL at cutover; do not add a second key, or a stale one will outlive its purpose.
-    'safecount': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
-  };
-
-  // state is "<random>.<appKey>". The random half is what the app verifies; the
-  // key half is only routing, and is useless without the matching cache entry.
-  function destinationFor(state) {
-    var key = String(state || '').split('.')[1] || 'portal';
-    return DESTINATIONS[key] || '';
-  }
-
-  var incoming = new URLSearchParams(window.location.search);
-  var out = new URLSearchParams();
-
-  // Forward ONLY what the portal reads. Google also appends authuser, scope, iss
-  // and prompt; authuser in particular is part of what makes a direct redirect to
-  // script.google.com fail, and none of the rest is any of the portal's business.
-  ['state', 'code', 'error'].forEach(function (k) {
-    var v = incoming.get(k);
-    if (v) out.set(k, v);
-  });
-
-  var dest = destinationFor(incoming.get('state'));
-
-  if (!out.has('code') && !out.has('error')) {
-    document.getElementById('msg').textContent =
-      'This page is only used part-way through signing in. Open the portal instead.';
-    document.getElementById('go').href = DESTINATIONS.portal;
-  } else if (!dest) {
-    // An unrecognised key. Refuse rather than guess - guessing is how an open
-    // redirect gets built by accident.
-    document.getElementById('msg').textContent =
-      'This sign-in link is not one we recognise. Please start again from the portal.';
-    document.getElementById('go').href = DESTINATIONS.portal;
-  } else {
-    var target = dest + '?' + out.toString();
-    document.getElementById('go').href = target;
-    // replace() rather than href= so this hop leaves no back-button trap.
-    window.location.replace(target);
-  }
+  // Only ever seen if the navigation above did not happen.
+  var go = document.getElementById('go');
+  go.href = window.__FALLBACK;
+  if (window.__MESSAGE) document.getElementById('msg').textContent = window.__MESSAGE;
 </script>
 </body>
 </html>
