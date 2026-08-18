@@ -1,30 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Signing you in…</title>
+<title>Connexion en cours…</title>
 <style>
-  body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-         margin: 0; display: grid; place-items: center; min-height: 100vh; color: #1f1f1f; }
+  /* Safe Count's design system, the same as the portal's. This page sits in the
+     middle of the sign-in flow, so a white screen here is a white screen between
+     two dark ones - which reads as something having gone wrong, at the one moment
+     the user has no way to tell. */
+  :root {
+    --gold:#FFC72C; --dark-gold:#E8A800;
+    --dark-bg:#1A1A1A; --card-bg:#232323; --border:#3A3A3A;
+    --text:#F5F5F5; --text-muted:#9E9E9E; --text-dim:#6B6B6B;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100vh;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-size: 15px; line-height: 1.6;
+    background: var(--dark-bg); color: var(--text);
+  }
+  body { display: grid; place-items: center; }
   main { text-align: center; padding: 24px; max-width: 420px; }
-  .spinner { width: 22px; height: 22px; margin: 0 auto 14px; border-radius: 50%;
-             border: 2px solid #dadce0; border-top-color: #1a73e8;
-             animation: spin .8s linear infinite; }
+
+  .mark {
+    width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 14px;
+    background: var(--gold); color: var(--dark-bg);
+    font-size: 20px; font-weight: 700; letter-spacing: -.02em;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .spinner {
+    width: 22px; height: 22px; margin: 0 auto 16px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--gold);
+    animation: spin .8s linear infinite;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
+  /* A spinner that cannot spin is just a broken ring. */
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: var(--border); border-right-color: var(--gold); }
+  }
+
   h1 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
-  p  { color: #5f6368; font-size: 14px; margin: 0; }
+  p  { color: var(--text-muted); font-size: 14px; margin: 0; }
+  .brand {
+    margin-top: 26px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
   #fallback { margin-top: 20px; display: none; }
-  a { display: inline-block; font-weight: 600; background: #1a73e8; color: #fff;
-      text-decoration: none; border-radius: 8px; padding: 11px 18px; }
+  a {
+    display: inline-block; font-weight: 600; background: var(--gold); color: var(--dark-bg);
+    text-decoration: none; border-radius: 6px; padding: 11px 18px;
+  }
+  a:hover { background: var(--dark-gold); }
 </style>
 </head>
 <body>
 <main>
+  <div class="mark">JM</div>
   <div class="spinner" id="spinner"></div>
-  <h1 id="title">Signing you in…</h1>
-  <p id="msg">One moment.</p>
-  <p id="fallback"><a id="go" href="#">Continue</a></p>
+  <h1 id="title">Connexion en cours…</h1>
+  <p id="msg">Un instant.</p>
+  <p id="fallback"><a id="go" href="#">Continuer</a></p>
+  <p class="brand">Jacmar Restaurants Inc.</p>
 </main>
 
 <script>
@@ -35,6 +73,39 @@
   // "never paint" means a blank white screen for as long as it takes - which reads
   // as broken. A short "Signing you in…" reads as working. Being seen is the point.
   (function () {
+    // The portal seeds language from navigator.language and remembers the choice
+    // in localStorage. This page is a different origin, so it cannot read that -
+    // it can only apply the same seeding rule. It is on screen for about a second
+    // and has no control to toggle, so there is nothing to remember anyway.
+    var EN = /^en/i.test(navigator.language || '');
+    var T = EN ? {
+      title:      'Signing you in…',
+      msg:        'One moment.',
+      go:         'Continue',
+      idle_title: 'Nothing to do here',
+      idle_msg:   'This page is only used part-way through signing in.',
+      bad_title:  'Link not recognised',
+      bad_msg:    'Please start again from the app you were opening.',
+      slow:       'Still going. Use the button if nothing happens.'
+    } : {
+      title:      'Connexion en cours…',
+      msg:        'Un instant.',
+      go:         'Continuer',
+      idle_title: 'Rien à faire ici',
+      idle_msg:   'Cette page ne sert qu’au milieu du processus de connexion.',
+      bad_title:  'Lien non reconnu',
+      bad_msg:    'Recommencez depuis l’application que vous ouvriez.',
+      slow:       'Toujours en cours. Utilisez le bouton si rien ne se passe.'
+    };
+
+    // Set before the first paint - this script runs at the end of <body>, and the
+    // navigation below is deferred by two animation frames precisely so the paint
+    // happens first.
+    document.documentElement.lang = EN ? 'en' : 'fr';
+    document.getElementById('title').textContent = T.title;
+    document.getElementById('msg').textContent   = T.msg;
+    document.getElementById('go').textContent    = T.go;
+
     var DESTINATIONS = {
       'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
       // Safe Count, Phase 5 TEST deployment - the test script and test spreadsheet,
@@ -71,13 +142,13 @@
     }
 
     if (!out.has('code') && !out.has('error')) {
-      stop('Nothing to do here', 'This page is only used part-way through signing in.');
+      stop(T.idle_title, T.idle_msg);
       return;
     }
     if (!dest) {
       // Unrecognised key: refuse rather than guess. Guessing is how an open redirect
       // gets built by accident.
-      stop('Link not recognised', 'Please start again from the app you were opening.');
+      stop(T.bad_title, T.bad_msg);
       return;
     }
 
@@ -106,7 +177,7 @@
     // waiting, and the wording no longer claims to know anything.
     setTimeout(function () {
       document.getElementById('fallback').style.display = 'block';
-      document.getElementById('msg').textContent = 'Still going. Use the button if nothing happens.';
+      document.getElementById('msg').textContent = T.slow;
     }, 12000);
   })();
 </script>
