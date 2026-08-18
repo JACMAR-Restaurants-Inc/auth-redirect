@@ -1,0 +1,27 @@
+# Runs test/redirect.test.js on every pull request and on master.
+#
+# This repo is public, so Actions minutes are free and unmetered here.
+#
+# What it does NOT do: gate the deploy. GitHub Pages publishes from master on its
+# own, and a failing test cannot stop it. To make this a real gate rather than a
+# notification, require the "test" check in the branch ruleset for master - then a
+# red run blocks the merge, and nothing reaches master to be published.
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # No dependencies, deliberately - the test loads index.html and runs it in a
+      # stub DOM using only node built-ins. Nothing to install, nothing to cache,
+      # and no supply chain on the page every sign-in passes through.
+      - run: npm test
