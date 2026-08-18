@@ -1,0 +1,8 @@
+{
+  "name": "auth-redirect",
+  "private": true,
+  "description": "OAuth return hop for the RBAC portal. See README.md and RBAC/CLAUDE.md §22.",
+  "scripts": {
+    "test": "node test/redirect.test.js"
+  }
+}
