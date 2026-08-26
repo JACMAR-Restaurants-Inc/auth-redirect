@@ -91,6 +91,38 @@ ok('the two Cash Balancing keys point at DIFFERENT deployments',
 ok('...and the real key is not aimed at the test deployment',
    urlFor('safecount').indexOf('AKfycbw8ajAFSUJy') === -1);
 
+// ======================================================== it looks like the rest
+//
+// This page sits in the MIDDLE of the sign-in flow, so whatever colour it is
+// appears between two screens the person has just seen. It used to be the old
+// charcoal-and-gold system, which put a charcoal flash between two green screens -
+// not broken, but visibly a different product for about a second, at the one moment
+// the user has no way to tell what is happening.
+ok('the ground is the doors\' deep forest green', /--bg:#0A1410/.test(html));
+ok('...turning light when the device asks', /@media \(prefers-color-scheme:light\)/.test(html) &&
+   /--bg:#FBF9F7/.test(html));
+ok('...and the old charcoal-and-gold system is gone',
+   !/#FFC72C/i.test(html) && !/#1A1A1A/i.test(html));
+
+// On screen for roughly one network round trip. A font request would either delay
+// the paint or swap the text under the reader - the doors can afford that, this
+// cannot. Everything here has to be inline and immediate.
+ok('no webfont is requested, so the paint is never delayed',
+   !/fonts\.googleapis|@font-face|<link[^>]*stylesheet/i.test(html));
+
+// The Golden Arches are deliberately absent. A screen that exists for a second is
+// not a place for them - "do not use in illegible instances", and a mark that
+// flashes past mid-navigation serves nobody. The JACMAR wordmark is ours and
+// carries no such rule.
+ok('the Arches are not on this page', !/207\.55061/.test(html));
+ok('...but the wordmark is, so the page still reads as ours', /class="wm"/.test(html));
+
+// Being SEEN is the point. An earlier version ran the navigation in <head> so the
+// browser never painted, which meant a blank white screen for the length of the
+// round trip - and blank reads as broken where a short message reads as working.
+ok('it still paints a message and a spinner before navigating',
+   /id="spinner"/.test(html) && /id="title"/.test(html));
+
 // ================================================= it drops what it must drop
 const noisy = run('?state=abc.portal&code=c1&authuser=2&scope=email+profile&iss=https%3A%2F%2Faccounts.google.com&prompt=consent');
 ok('authuser is dropped', !/authuser/.test(noisy.replaced));
