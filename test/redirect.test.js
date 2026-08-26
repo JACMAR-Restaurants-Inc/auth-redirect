@@ -55,6 +55,25 @@ const sc = run('?state=zz.safecount&code=xyz');
 ok('a safecount state lands somewhere else entirely',
    String(sc.replaced).indexOf(PORTAL) !== 0 && /script\.google\.com/.test(String(sc.replaced)));
 
+// TWO keys for Cash Balancing, and the distinction is the whole point. Both apps
+// are built from one repo, so a single key would make both claim to be the same
+// app: point it at production and a sign-in begun in the test app is forwarded to
+// production, the state still validates, and somebody files a count into the real
+// spreadsheet believing they are in test. Silently wrong, not broken.
+const sct = run('?state=zz.safecount-test&code=xyz');
+ok('the test app has a key of its own', String(sct.replaced).indexOf('script.google.com') !== -1);
+ok('...which is not the portal', String(sct.replaced).indexOf(PORTAL) !== 0);
+
+// Until the trial starts the real deployment does not exist, so both point at the
+// test one. The assertion is deliberately about them being SEPARATELY LISTED
+// rather than about their values: the values diverge at step 9 of the trial and
+// this check has to survive that, or it goes red for the change it exists to allow.
+const dests = script.slice(script.indexOf('var DESTINATIONS'), script.indexOf('var incoming'));
+ok('both keys are listed in their own right',
+   /'safecount':/.test(dests) && /'safecount-test':/.test(dests));
+ok('...and nothing else crept into the allowlist',
+   (dests.match(/^\s*'[a-z-]+':/gm) || []).length === 3);
+
 // ================================================= it drops what it must drop
 const noisy = run('?state=abc.portal&code=c1&authuser=2&scope=email+profile&iss=https%3A%2F%2Faccounts.google.com&prompt=consent');
 ok('authuser is dropped', !/authuser/.test(noisy.replaced));
