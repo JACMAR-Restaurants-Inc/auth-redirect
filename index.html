@@ -108,10 +108,31 @@
 
     var DESTINATIONS = {
       'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
-      // Safe Count, Phase 5 TEST deployment - the test script and test spreadsheet,
-      // not the one Aylmer and Vanier use. Swap for production at cutover rather than
-      // adding a second key, so a stale destination cannot outlive its purpose.
-      'safecount': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
+      // Cash Balancing. TWO keys, and which is which matters.
+      //
+      // 'safecount' is the REAL app - the script and spreadsheet Aylmer and Vanier
+      // use. 'safecount-test' is the test copy. Until the production trial starts,
+      // BOTH point at the test deployment, because the real one does not exist yet;
+      // 'safecount' moves to it at step 9 of the trial and 'safecount-test' stays
+      // where it is.
+      //
+      // An earlier note here said to swap this single key at cutover rather than
+      // add a second, "so a stale destination cannot outlive its purpose". That was
+      // written for a cutover, where the test app dies. A TRIAL is different: the
+      // two run side by side, and one key cannot serve both.
+      //
+      // What it cannot serve them badly is the point. Both apps are built from one
+      // repo, so both would call themselves 'safecount': point that key at
+      // production and a sign-in begun in the test app is forwarded to production,
+      // the state still validates because the key matches, the code is still
+      // exchanged, and somebody files a count into the REAL spreadsheet believing
+      // they are in test. Silently wrong, not broken.
+      //
+      // The app-side key now comes from a Script Property, defaulting to
+      // 'safecount' - so production is correct with nothing set, and only the test
+      // script carries the override.
+      'safecount':      'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec',
+      'safecount-test': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
     };
 
     var incoming = new URLSearchParams(window.location.search);
