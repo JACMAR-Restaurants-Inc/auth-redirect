@@ -110,11 +110,16 @@
       'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
       // Cash Balancing. TWO keys, and which is which matters.
       //
-      // 'safecount' is the REAL app - the script and spreadsheet Aylmer and Vanier
-      // use. 'safecount-test' is the test copy. Until the production trial starts,
-      // BOTH point at the test deployment, because the real one does not exist yet;
-      // 'safecount' moves to it at step 9 of the trial and 'safecount-test' stays
-      // where it is.
+      // 'safecount' is the REAL app - the production script and the real Cash
+      // Balancing spreadsheet. 'safecount-test' is the test copy.
+      //
+      // They diverged on 2026-08-26, when the trial deployment went live. Before
+      // that both pointed at test, and the symptom of leaving it that way was
+      // exactly what this split exists to prevent: signing in on the TRIAL url
+      // minted a state saying 'safecount', this page forwarded it to TEST, the test
+      // app rejected the mismatched key and bounced to a fresh sign-in, and the
+      // second attempt succeeded - INTO THE TEST APP. Two sign-ins and the wrong
+      // spreadsheet, with no error anywhere.
       //
       // An earlier note here said to swap this single key at cutover rather than
       // add a second, "so a stale destination cannot outlive its purpose". That was
@@ -131,7 +136,7 @@
       // The app-side key now comes from a Script Property, defaulting to
       // 'safecount' - so production is correct with nothing set, and only the test
       // script carries the override.
-      'safecount':      'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec',
+      'safecount':      'https://script.google.com/macros/s/AKfycbzyfEGc760BCyS7OKbXQTzklaBdJGPnEG0c7-zkMFKurKRrlDPwiV7GDCXd9I5TINf-QQ/exec',
       'safecount-test': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
     };
 

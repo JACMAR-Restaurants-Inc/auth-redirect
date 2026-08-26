@@ -74,6 +74,23 @@ ok('both keys are listed in their own right',
 ok('...and nothing else crept into the allowlist',
    (dests.match(/^\s*'[a-z-]+':/gm) || []).length === 3);
 
+// They diverged on 2026-08-26 when the trial deployment went live, and pointing
+// them at the same place again is not a tidy-up - it is the bug this split exists
+// to prevent. Signing in on the trial minted a state saying 'safecount', this page
+// forwarded it to test, the test app rejected the mismatched key and bounced to a
+// fresh sign-in, and the second attempt landed IN THE TEST APP. Two sign-ins and
+// the wrong spreadsheet, with no error anywhere.
+const urlFor = (k) => (dests.match(new RegExp("'" + k + "':\\s*'([^']+)'")) || [])[1];
+ok('the two Cash Balancing keys point at DIFFERENT deployments',
+   urlFor('safecount') && urlFor('safecount-test') &&
+   urlFor('safecount') !== urlFor('safecount-test'),
+   'safecount -> ' + urlFor('safecount') + ' | safecount-test -> ' + urlFor('safecount-test'));
+// Deliberately not pinned to a literal id: the trial deployment gets replaced at
+// cutover and this check has to survive that. What must stay true is that the real
+// key is not aimed at the test one.
+ok('...and the real key is not aimed at the test deployment',
+   urlFor('safecount').indexOf('AKfycbw8ajAFSUJy') === -1);
+
 // ================================================= it drops what it must drop
 const noisy = run('?state=abc.portal&code=c1&authuser=2&scope=email+profile&iss=https%3A%2F%2Faccounts.google.com&prompt=consent');
 ok('authuser is dropped', !/authuser/.test(noisy.replaced));
