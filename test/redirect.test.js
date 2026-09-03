@@ -15,7 +15,13 @@ const path = require('path');
 const vm = require('vm');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const script = (html.match(/<script>([\s\S]*?)<\/script>/) || [])[1];
+// EVERY script block, in order, as a browser would. There are two now: one in
+// <head> that decides which app this is before the first paint, and one at the end
+// of <body> that routes. Taking only the first silently ran the wrong one.
+const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+// The routing script - the one at the end of <body> - for assertions about its
+// source. Named so a reader is not left wondering which of the two this is.
+const script = scripts[scripts.length - 1];
 
 let passed = 0; const failures = [];
 const ok = (label, cond, detail) => cond ? passed++ : failures.push(label + (detail ? '  [' + detail + ']' : ''));
@@ -29,7 +35,16 @@ function run(search, lang) {
   let replaced = null;
   const frames = [];
   const sandbox = {
-    document: { getElementById: (id) => nodes[id] || el(), documentElement: {} },
+    document: {
+      getElementById: (id) => nodes[id] || el(),
+      // A real attribute bag: the head script writes the app key here and the body
+      // script reads it back, so a stub that swallows both would hide a mismatch.
+      documentElement: (() => {
+        const a = {};
+        return { setAttribute: (k, v) => { a[k] = v; }, getAttribute: (k) => a[k] || null,
+                 get attrs() { return a; } };
+      })()
+    },
     window: { location: { search, replace: (u) => { replaced = u; } } },
     navigator: { language: lang || 'fr-CA' },
     URLSearchParams,
@@ -39,10 +54,10 @@ function run(search, lang) {
   };
   sandbox.window.window = sandbox.window;
   vm.createContext(sandbox);
-  vm.runInContext(script, sandbox);
+  scripts.forEach((s) => vm.runInContext(s, sandbox));
   // The page defers navigation by two animation frames so its message is painted.
   while (frames.length) frames.shift()();
-  return { replaced, nodes, framesUsed: true };
+  return { replaced, nodes, framesUsed: true, app: sandbox.document.documentElement.getAttribute('data-app') };
 }
 
 // ============================================== it forwards to the right place
@@ -93,16 +108,42 @@ ok('...and the real key is not aimed at the test deployment',
 
 // ======================================================== it looks like the rest
 //
-// This page sits in the MIDDLE of the sign-in flow, so whatever colour it is
-// appears between two screens the person has just seen. It used to be the old
-// charcoal-and-gold system, which put a charcoal flash between two green screens -
-// not broken, but visibly a different product for about a second, at the one moment
-// the user has no way to tell what is happening.
-ok('the ground is the doors\' deep forest green', /--bg:#0A1410/.test(html));
-ok('...turning light when the device asks', /@media \(prefers-color-scheme:light\)/.test(html) &&
-   /--bg:#FBF9F7/.test(html));
-ok('...and the old charcoal-and-gold system is gone',
-   !/#FFC72C/i.test(html) && !/#1A1A1A/i.test(html));
+// ONE PAGE, TWO PRODUCTS. It sits in the MIDDLE of a sign-in, so whatever colour
+// it is appears between two screens the person has just seen. It used to be one
+// palette for both, which meant it matched neither door once they diverged.
+//
+// The key is already parsed for routing, so it picks the colours too.
+ok('the app key is set before the first paint, in <head>',
+   /<head>[\s\S]*?setAttribute\('data-app'[\s\S]*?<\/head>/.test(html));
+ok('...and parsed once, with the router reading it back',
+   /getAttribute\('data-app'\)/.test(script) &&
+   (html.match(/split\('\.'\)\[1\]/g) || []).length === 1);
+const portalRun = run('?state=abc.portal&code=x');
+const scRun     = run('?state=abc.safecount&code=x');
+const scTestRun = run('?state=abc.safecount-test&code=x');
+ok('a portal sign-in is tagged portal', portalRun.app === 'portal', portalRun.app);
+ok('...a Cash Balancing one is tagged safecount', scRun.app === 'safecount', scRun.app);
+ok('...and the test app carries its own tag', scTestRun.app === 'safecount-test', scTestRun.app);
+
+// PORTAL - the off-white of its right-hand panel, the surface the button they just
+// pressed was on. Light only, because that door is light only.
+ok('the portal ground is its own off-white', /:root \{[^}]*--bg:#FAF9F6/.test(html));
+// CASH BALANCING - dark by default and light when the device asks, exactly as its
+// door is, because the app behind it is charcoal.
+ok('Cash Balancing gets its own charcoal ground',
+   /:root\[data-app\^="safecount"\] \{[^}]*--bg:#1A1A1A/.test(html) &&
+   /--acc:#FFC72C/.test(html));
+ok('...turning to its green when the device asks',
+   /@media \(prefers-color-scheme:light\)[\s\S]{0,120}:root\[data-app\^="safecount"\][^}]*--bg:#F2F8F4/.test(html));
+// The prefix match is what makes safecount-test wear the same colours as the real
+// app without a second block to keep in step.
+ok('...and the test key wears the same colours by prefix',
+   /data-app\^="safecount"/.test(html) && !/data-app="safecount-test"/.test(html));
+// The portal branch must NOT follow the device, or its door and this page disagree
+// the moment somebody is on a dark phone.
+ok('the portal is light only, like its door',
+   !/@media \(prefers-color-scheme:dark\)/.test(html) &&
+   !/:root \{[^}]*--bg:#1A1A1A/.test(html));
 
 // On screen for roughly one network round trip. A font request would either delay
 // the paint or swap the text under the reader - the doors can afford that, this

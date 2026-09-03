@@ -4,6 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Connexion en cours…</title>
+<script>
+  /* THE APP KEY, IN <head>, AND NOTHING ELSE.
+     §25's lesson was about NAVIGATING from head - that made the browser paint
+     nothing and read as a crash. Setting one attribute is the opposite: it has to
+     happen before the first paint, or the page renders one product's colours and
+     then swaps to the other's, which is worse than either.
+     Parsed ONCE, here. The body script reads it back off the element rather than
+     parsing the state a second time, or the two could disagree about which app
+     this is - and one of them decides the colours while the other decides the
+     destination. */
+  (function () {
+    var st = new URLSearchParams(window.location.search).get('state') || '';
+    document.documentElement.setAttribute('data-app', st.split('.')[1] || 'portal');
+  })();
+</script>
 <style>
   /* The sign-in design, the same as both doors.
 
@@ -23,14 +38,28 @@
      into the OAuth `state` and back, which is a lot of machinery for one second of
      one screen. So somebody who picked light on a dark phone sees one dark frame in
      the middle. Known, and not worth the complexity to fix. */
+  /* ONE PAGE, TWO PRODUCTS, so it wears whichever door the person just came
+     through. The key is already parsed for routing; it decides the colours too.
+
+     PORTAL - the off-white of its right-hand panel, which is the surface the
+     button they just pressed was sitting on. Light only, because that door is.
+
+     CASH BALANCING - dark by default and light when the device asks, exactly as
+     its door is, because the app behind it is charcoal.
+
+     Values are copied from the two doors, not chosen here. */
   :root {
-    --bg:#0A1410; --tx:#FFFFFF; --mut:#B9C9BC; --faint:#8FA394;
-    --acc:#8FCB9B; --acc-ink:#0A1410; --line:#22382A;
+    --bg:#FAF9F6; --tx:#151918; --mut:#5F6764; --faint:#78817C;
+    --acc:#2E7D50; --acc-ink:#FFFFFF; --line:#E0E2DE;
+  }
+  :root[data-app^="safecount"] {
+    --bg:#1A1A1A; --tx:#F5F5F5; --mut:#B8B8B8; --faint:#8A8A8A;
+    --acc:#FFC72C; --acc-ink:#1A1A1A; --line:#3A3A3A;
   }
   @media (prefers-color-scheme:light) {
-    :root {
-      --bg:#FBF9F7; --tx:#1F2A1F; --mut:#5A5F58; --faint:#687066;
-      --acc:#2C5238; --acc-ink:#FFFFFF; --line:#E2E5DC;
+    :root[data-app^="safecount"] {
+      --bg:#F2F8F4; --tx:#192821; --mut:#44614F; --faint:#5E8571;
+      --acc:#1B5E37; --acc-ink:#FFFFFF; --line:#C5E0D0;
     }
   }
 
@@ -180,7 +209,9 @@
     // An ALLOWLIST, not a URL from the query string - carrying the destination in the
     // URL would make this an open redirect, usable to lend our domain to a phishing
     // link.
-    var key  = String(incoming.get('state') || '').split('.')[1] || 'portal';
+    // Read back, not re-parsed. The <head> script above already decided this, and
+    // two parsers could disagree about which app this is.
+    var key  = document.documentElement.getAttribute('data-app') || 'portal';
     var dest = DESTINATIONS[key] || '';
 
     function stop(title, message) {
