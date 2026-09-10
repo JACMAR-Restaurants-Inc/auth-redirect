@@ -213,6 +213,19 @@ ok('navigation is deferred behind animation frames, not issued inline',
    /requestAnimationFrame\([\s\S]*?requestAnimationFrame\(/.test(script));
 ok('it uses replace(), leaving no back-button trap', /location\.replace\(/.test(script));
 
+// ================================================= the one hosted image
+// The JM Portal tab icon lives here because setFaviconUrl needs a public .png
+// URL. The routing page must not come to depend on it, and it must stay an image.
+(() => {
+  const file = path.join(__dirname, '..', 'jm-portal-icon.png');
+  const png = fs.existsSync(file) ? fs.readFileSync(file) : Buffer.alloc(0);
+  ok('the JM Portal tab icon is hosted here, as a PNG',
+     png.length > 0 && png.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])));
+  ok('...square, and small', png.length > 0 && png.readUInt32BE(16) === png.readUInt32BE(20) && png.length < 4096,
+     png.length + ' bytes');
+  ok('...and the routing page does not reference it', html.indexOf('jm-portal-icon') === -1);
+})();
+
 console.log('\nauth-redirect');
 console.log('-------------');
 if (failures.length) {

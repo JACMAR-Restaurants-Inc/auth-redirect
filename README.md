@@ -39,3 +39,18 @@ secret, which lives only in the Apps Script project and is never present here.
 
 This repository is public because GitHub Pages requires it. There is nothing in it worth
 hiding.
+
+## It also hosts one image
+
+`jm-portal-icon.png` is the JM Portal mark, served from here because the portal's
+browser-tab icon needs a public URL ending in `.png`. Apps Script's `setFaviconUrl`
+refuses a `data:` URI, which was tried first. The portal already depends on this
+site for every sign-in, so hosting it here adds no new dependency. If Pages is ever
+down, the tab shows Apps Script's default icon and nothing else changes.
+
+It is a **copy**. The source of truth is `RBAC/designs/branding/jm-portal-icon-96.png`,
+built by `mkicon.py` beside it. If the mark changes there, replace this file with
+the new one, byte for byte.
+
+`index.html` does not reference it, and routing does not depend on it.
+
