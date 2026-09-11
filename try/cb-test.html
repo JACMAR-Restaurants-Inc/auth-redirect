@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Cash Balancing (test)</title>
+<!--
+  A TEST, 2026-09-11 - not linked from anywhere, not used by any manager.
+
+  The question it answers: does showing an Apps Script app INSIDE a page on this
+  (non-Google) site get past Google's account router? With several Google accounts
+  signed in, opening script.google.com directly dies at /macros/u/1/s/... with
+  "Sorry, unable to open the file at this time" before the app runs (RBAC CLAUDE.md
+  §22). Incognito works, because no Google cookies are sent. Here the app is a
+  cross-site frame, so the browser keeps Google's cookies out of it:
+    - every iPhone browser (all WebKit) blocks cross-site cookies by default;
+    - Chrome honours `credentialless`, which loads the frame with no cookies at all;
+    - Firefox partitions them, so the frame gets an empty jar.
+  Google then sees an anonymous visitor - the incognito case - and the app loads.
+
+  It frames the Cash Balancing TEST deployment only. Signing in from here is
+  expected to fail on the way back (Google returns to script.google.com directly);
+  making the round trip come back through a page like this is the next step.
+-->
+<style>
+  html, body { margin:0; height:100%; background:#1A1A1A; }
+  body { display:flex; flex-direction:column; font:12px/1.4 -apple-system, 'Segoe UI', sans-serif; }
+  .strip { flex:none; padding:4px 10px; padding-top:max(4px, env(safe-area-inset-top));
+           background:#FFC72C; color:#1A1A1A; text-align:center; }
+  iframe { flex:1; width:100%; border:0; display:block; }
+</style>
+</head>
+<body>
+  <div class="strip" id="strip">TEST · Cash Balancing (test) inside another page</div>
+  <iframe credentialless
+          src="https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec"
+          title="Cash Balancing (test)"></iframe>
+  <script>
+    // Which mechanism this browser is relying on, so a result can be read back.
+    var s = document.getElementById('strip');
+    var cl = 'credentialless' in HTMLIFrameElement.prototype;
+    s.textContent += cl ? ' · cookie-free frame: yes' : ' · cookie-free frame: no (relies on blocked cross-site cookies)';
+  </script>
+</body>
+</html>
