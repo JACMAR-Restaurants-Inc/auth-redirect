@@ -76,7 +76,14 @@ ok('a safecount state lands somewhere else entirely',
 // production, the state still validates, and somebody files a count into the real
 // spreadsheet believing they are in test. Silently wrong, not broken.
 const sct = run('?state=zz.safecount-test&code=xyz');
-ok('the test app has a key of its own', String(sct.replaced).indexOf('script.google.com') !== -1);
+// Since 2026-09-11 the TEST app comes back through its framed page, so Google's
+// account router never sees the hop (RBAC CLAUDE.md §22). The real app and the portal
+// do not - yet - and that is asserted too, so the trial cannot move by accident.
+ok('the test app has a key of its own, landing on its framed page with the code',
+   /^https:\/\/jacmar-restaurants-inc\.github\.io\/auth-redirect\/try\/cb-test\.html\?state=zz\.safecount-test&code=xyz$/
+     .test(String(sct.replaced)), String(sct.replaced));
+ok('...while the real app still goes straight to its own deployment',
+   /^https:\/\/script\.google\.com\/macros\/s\/AKfycbzyfEGc760B[^/]+\/exec\?/.test(String(sc.replaced)), String(sc.replaced));
 ok('...which is not the portal', String(sct.replaced).indexOf(PORTAL) !== 0);
 
 // Until the trial starts the real deployment does not exist, so both point at the
@@ -225,6 +232,32 @@ ok('it uses replace(), leaving no back-button trap', /location\.replace\(/.test(
      png.length + ' bytes');
   ok('...and the routing page does not reference it', html.indexOf('jm-portal-icon') === -1);
 })();
+
+// ---------------------------------------------------------- the framed test page
+//
+// It receives a one-time code, so it must pass on only what the app reads, only to
+// the one app it frames, and must not keep the code in its own address.
+const TRY = fs.readFileSync(path.join(__dirname, '..', 'try', 'cb-test.html'), 'utf8');
+const tryJs = (TRY.match(/<script>([\s\S]*?)<\/script>/) || [])[1] || '';
+const runTry = (search) => {
+  const frame = {}; let replaced = null;
+  const sb = { URLSearchParams, HTMLIFrameElement: function () {},
+    window: { location: { search, pathname: '/auth-redirect/try/cb-test.html' } },
+    history: { replaceState: (a, b, url) => { replaced = url; } },
+    document: { getElementById: (id) => (id === 'app' ? frame : { textContent: '' }) } };
+  require('vm').runInNewContext(tryJs, sb);
+  return { src: frame.src, replaced };
+};
+const TEST_APP = 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec';
+const t1 = runTry('?state=zz.safecount-test&code=xyz&authuser=1&scope=email');
+ok('the framed page hands the app the state and code', t1.src === TEST_APP + '?state=zz.safecount-test&code=xyz', t1.src);
+ok('...and nothing else Google appended', !/authuser|scope/.test(t1.src));
+ok('...then takes the code out of its own address', t1.replaced === '/auth-redirect/try/cb-test.html');
+ok('with nothing to pass on, it just shows the app', runTry('').src === TEST_APP && runTry('').replaced === null);
+ok('it frames one fixed app, never an address from the query string',
+   runTry('?state=a&code=b&dest=https://evil.invalid').src.indexOf('evil') === -1 &&
+   (tryJs.match(/https:\/\/script\.google\.com\/macros\/s\/[^'"]+/g) || []).length === 1);
+ok('...in a cookie-free frame', /<iframe credentialless id="app"/.test(TRY));
 
 console.log('\nauth-redirect');
 console.log('-------------');

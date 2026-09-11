@@ -190,7 +190,14 @@
       // 'safecount' - so production is correct with nothing set, and only the test
       // script carries the override.
       'safecount':      'https://script.google.com/macros/s/AKfycbzyfEGc760BCyS7OKbXQTzklaBdJGPnEG0c7-zkMFKurKRrlDPwiV7GDCXd9I5TINf-QQ/exec',
-      'safecount-test': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
+      //
+      // THE TEST APP COMES BACK THROUGH A FRAME (2026-09-11). With several Google
+      // accounts signed in, any direct visit to script.google.com dies in Google's
+      // account router (RBAC CLAUDE.md §22) - including this hop's. try/cb-test.html
+      // shows the app inside itself, where Google's cookies are kept out, and passes
+      // the code on. Being tried on the TEST app only; 'safecount' and 'portal' still
+      // go straight to script.google.com until it has proved itself.
+      'safecount-test': 'https://jacmar-restaurants-inc.github.io/auth-redirect/try/cb-test.html'
     };
 
     var incoming = new URLSearchParams(window.location.search);
