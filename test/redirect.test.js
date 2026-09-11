@@ -76,11 +76,11 @@ ok('a safecount state lands somewhere else entirely',
 // production, the state still validates, and somebody files a count into the real
 // spreadsheet believing they are in test. Silently wrong, not broken.
 const sct = run('?state=zz.safecount-test&code=xyz');
-// Since 2026-09-11 the TEST app comes back through its framed page, so Google's
-// account router never sees the hop (RBAC CLAUDE.md §22). The real app and the portal
-// do not - yet - and that is asserted too, so the trial cannot move by accident.
-ok('the test app has a key of its own, landing on its framed page with the code',
-   /^https:\/\/jacmar-restaurants-inc\.github\.io\/auth-redirect\/try\/cb-test\.html\?state=zz\.safecount-test&code=xyz$/
+// The TEST app goes direct again while the owner tests UI changes on it (its framed
+// page, try/cb-test.html, stays - see index.html and RBAC CLAUDE.md §49). The real app
+// and the portal go direct too, and that is asserted, so nothing moves by accident.
+ok('the test app has a key of its own, landing on its own deployment with the code',
+   /^https:\/\/script\.google\.com\/macros\/s\/AKfycbw8ajAFSUJy[^/]+\/exec\?state=zz\.safecount-test&code=xyz$/
      .test(String(sct.replaced)), String(sct.replaced));
 ok('...while the real app still goes straight to its own deployment',
    /^https:\/\/script\.google\.com\/macros\/s\/AKfycbzyfEGc760B[^/]+\/exec\?/.test(String(sc.replaced)), String(sc.replaced));
