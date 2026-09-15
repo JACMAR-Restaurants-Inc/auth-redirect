@@ -27,7 +27,12 @@ let passed = 0; const failures = [];
 const ok = (label, cond, detail) => cond ? passed++ : failures.push(label + (detail ? '  [' + detail + ']' : ''));
 const eq = (label, a, b) => ok(label, a === b, 'got ' + JSON.stringify(a) + ', expected ' + JSON.stringify(b));
 
-const PORTAL = 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec';
+// The framed front doors (RBAC CLAUDE.md sections 49 and 52). Every sign-in lands on
+// one of these, never on script.google.com, where Google's account router fails a
+// browser signed into several accounts.
+const PORTAL  = 'https://jacmar-restaurants-inc.github.io/portal/';
+const CB      = 'https://jacmar-restaurants-inc.github.io/portal/cash-balancing/';
+const CB_TEST = 'https://jacmar-restaurants-inc.github.io/portal/cash-balancing-test/';
 
 function run(search, lang) {
   const el = () => ({ textContent: '', href: '', style: {} });
@@ -62,34 +67,28 @@ function run(search, lang) {
 
 // ============================================== it forwards to the right place
 const good = run('?state=abc123.portal&code=4%2F0AX4');
-ok('a portal state lands on the portal', String(good.replaced).indexOf(PORTAL) === 0);
+ok('a portal state lands on the portal\'s framed page', good.replaced === PORTAL + '?state=abc123.portal&code=4%2F0AX4', good.replaced);
 ok('...carrying the code', /code=4%2F0AX4/.test(good.replaced));
 ok('...carrying the state', /state=abc123.portal/.test(good.replaced));
 
 const sc = run('?state=zz.safecount&code=xyz');
-ok('a safecount state lands somewhere else entirely',
-   String(sc.replaced).indexOf(PORTAL) !== 0 && /script\.google\.com/.test(String(sc.replaced)));
-
 // TWO keys for Cash Balancing, and the distinction is the whole point. Both apps
 // are built from one repo, so a single key would make both claim to be the same
-// app: point it at production and a sign-in begun in the test app is forwarded to
-// production, the state still validates, and somebody files a count into the real
-// spreadsheet believing they are in test. Silently wrong, not broken.
+// app: a sign-in begun in the test app forwarded to the real one still validates,
+// and somebody files a count into the real spreadsheet believing they are in test.
 const sct = run('?state=zz.safecount-test&code=xyz');
-// The TEST app goes direct again while the owner tests UI changes on it (its framed
-// page, try/cb-test.html, stays - see index.html and RBAC CLAUDE.md §49). The real app
-// and the portal go direct too, and that is asserted, so nothing moves by accident.
-ok('the test app has a key of its own, landing on its own deployment with the code',
-   /^https:\/\/script\.google\.com\/macros\/s\/AKfycbw8ajAFSUJy[^/]+\/exec\?state=zz\.safecount-test&code=xyz$/
-     .test(String(sct.replaced)), String(sct.replaced));
-ok('...while the real app still goes straight to its own deployment',
-   /^https:\/\/script\.google\.com\/macros\/s\/AKfycbzyfEGc760B[^/]+\/exec\?/.test(String(sc.replaced)), String(sc.replaced));
-ok('...which is not the portal', String(sct.replaced).indexOf(PORTAL) !== 0);
+ok('the real app lands on its framed page, with the code', sc.replaced === CB + '?state=zz.safecount&code=xyz', sc.replaced);
+ok('...and the test app on its own', sct.replaced === CB_TEST + '?state=zz.safecount-test&code=xyz', sct.replaced);
+ok('...neither of which is the portal', sc.replaced.indexOf(PORTAL + '?') !== 0 && sct.replaced.indexOf(PORTAL + '?') !== 0);
+// The destinations THEMSELVES, not the file: the comment above the allowlist explains
+// why script.google.com is gone, so a search of the source finds the explanation.
+const destValues = [...script.slice(script.indexOf('var DESTINATIONS'), script.indexOf('var incoming'))
+  .matchAll(/^\s*'[a-z-]+':\s*'([^']+)'/gm)].map(m => m[1]);
+ok('every sign-in lands on a framed page, none on script.google.com',
+   destValues.length === 3 && destValues.every(u => u.indexOf('https://jacmar-restaurants-inc.github.io/portal/') === 0),
+   destValues.join(' | '));
 
-// Until the trial starts the real deployment does not exist, so both point at the
-// test one. The assertion is deliberately about them being SEPARATELY LISTED
-// rather than about their values: the values diverge at step 9 of the trial and
-// this check has to survive that, or it goes red for the change it exists to allow.
+// Both keys SEPARATELY LISTED, and pointing at different places: see below.
 const dests = script.slice(script.indexOf('var DESTINATIONS'), script.indexOf('var incoming'));
 ok('both keys are listed in their own right',
    /'safecount':/.test(dests) && /'safecount-test':/.test(dests));
@@ -103,15 +102,14 @@ ok('...and nothing else crept into the allowlist',
 // fresh sign-in, and the second attempt landed IN THE TEST APP. Two sign-ins and
 // the wrong spreadsheet, with no error anywhere.
 const urlFor = (k) => (dests.match(new RegExp("'" + k + "':\\s*'([^']+)'")) || [])[1];
-ok('the two Cash Balancing keys point at DIFFERENT deployments',
+ok('the two Cash Balancing keys point at DIFFERENT framed pages',
    urlFor('safecount') && urlFor('safecount-test') &&
    urlFor('safecount') !== urlFor('safecount-test'),
    'safecount -> ' + urlFor('safecount') + ' | safecount-test -> ' + urlFor('safecount-test'));
-// Deliberately not pinned to a literal id: the trial deployment gets replaced at
-// cutover and this check has to survive that. What must stay true is that the real
-// key is not aimed at the test one.
-ok('...and the real key is not aimed at the test deployment',
-   urlFor('safecount').indexOf('AKfycbw8ajAFSUJy') === -1);
+// Which deployment each framed page shows is pinned in the `portal` repo's own test.
+// What must stay true here is that the real key is aimed at the real app's page.
+ok('...and the real key is aimed at the real app\'s page, not the test one',
+   urlFor('safecount') === CB && urlFor('safecount-test') === CB_TEST);
 
 // ======================================================== it looks like the rest
 //
@@ -232,32 +230,6 @@ ok('it uses replace(), leaving no back-button trap', /location\.replace\(/.test(
      png.length + ' bytes');
   ok('...and the routing page does not reference it', html.indexOf('jm-portal-icon') === -1);
 })();
-
-// ---------------------------------------------------------- the framed test page
-//
-// It receives a one-time code, so it must pass on only what the app reads, only to
-// the one app it frames, and must not keep the code in its own address.
-const TRY = fs.readFileSync(path.join(__dirname, '..', 'try', 'cb-test.html'), 'utf8');
-const tryJs = (TRY.match(/<script>([\s\S]*?)<\/script>/) || [])[1] || '';
-const runTry = (search) => {
-  const frame = {}; let replaced = null;
-  const sb = { URLSearchParams, HTMLIFrameElement: function () {},
-    window: { location: { search, pathname: '/auth-redirect/try/cb-test.html' } },
-    history: { replaceState: (a, b, url) => { replaced = url; } },
-    document: { getElementById: (id) => (id === 'app' ? frame : { textContent: '' }) } };
-  require('vm').runInNewContext(tryJs, sb);
-  return { src: frame.src, replaced };
-};
-const TEST_APP = 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec';
-const t1 = runTry('?state=zz.safecount-test&code=xyz&authuser=1&scope=email');
-ok('the framed page hands the app the state and code', t1.src === TEST_APP + '?state=zz.safecount-test&code=xyz', t1.src);
-ok('...and nothing else Google appended', !/authuser|scope/.test(t1.src));
-ok('...then takes the code out of its own address', t1.replaced === '/auth-redirect/try/cb-test.html');
-ok('with nothing to pass on, it just shows the app', runTry('').src === TEST_APP && runTry('').replaced === null);
-ok('it frames one fixed app, never an address from the query string',
-   runTry('?state=a&code=b&dest=https://evil.invalid').src.indexOf('evil') === -1 &&
-   (tryJs.match(/https:\/\/script\.google\.com\/macros\/s\/[^'"]+/g) || []).length === 1);
-ok('...in a cookie-free frame', /<iframe credentialless id="app"/.test(TRY));
 
 console.log('\nauth-redirect');
 console.log('-------------');

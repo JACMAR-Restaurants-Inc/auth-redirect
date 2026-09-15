@@ -18,6 +18,12 @@ comes from anywhere other than Google. So this page is registered as the OAuth r
 instead: Google redirects here, and this page forwards to the portal. One extra hop, and the
 router never engages.
 
+**Since 2026-09-15 it forwards to the framed pages**, not to `script.google.com`. The router
+turned out to fail on the first load too, whenever a browser holds several Google accounts, so
+the apps are now opened inside a cookie-free frame on the `portal` GitHub Pages site
+(`JACMAR-Restaurants-Inc/portal`). Each key goes to its page there, and that page hands the
+code to its one deployment. RBAC `CLAUDE.md` §49 and §52.
+
 ## What it does
 
 Reads `state`, `code` and `error` from the query string and forwards only those onward.

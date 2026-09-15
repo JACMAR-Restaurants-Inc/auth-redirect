@@ -160,11 +160,19 @@
     document.getElementById('go').textContent    = T.go;
 
     var DESTINATIONS = {
-      'portal': 'https://script.google.com/macros/s/AKfycbw9ITLeoTRo1qI-MkmkAdPpId7GeqwT6LgL8V9igMxkPpQmVvK_WYqtwhkIcU4GuTDh/exec',
+      // THE FRAMED FRONT DOORS (RBAC CLAUDE.md sections 49 and 52), not script.google.com.
+      //
+      // Sent straight to script.google.com, a browser signed into more than one Google
+      // account dies at Google's account router - "Sorry, unable to open the file at
+      // this time" - before the app runs. Each page on the `portal` GitHub Pages site
+      // shows its one deployment inside a cookie-free frame, which gets past it, and
+      // hands the app the state and code this page forwards. The deployments
+      // themselves are named in those pages, not here.
+      'portal':         'https://jacmar-restaurants-inc.github.io/portal/',
       // Cash Balancing. TWO keys, and which is which matters.
       //
-      // 'safecount' is the REAL app - the production script and the real Cash
-      // Balancing spreadsheet. 'safecount-test' is the test copy.
+      // 'safecount' is the REAL app - the trial deployment on the production script
+      // and the real Cash Balancing spreadsheet. 'safecount-test' is the test copy.
       //
       // They diverged on 2026-08-26, when the trial deployment went live. Before
       // that both pointed at test, and the symptom of leaving it that way was
@@ -174,31 +182,13 @@
       // second attempt succeeded - INTO THE TEST APP. Two sign-ins and the wrong
       // spreadsheet, with no error anywhere.
       //
-      // An earlier note here said to swap this single key at cutover rather than
-      // add a second, "so a stale destination cannot outlive its purpose". That was
-      // written for a cutover, where the test app dies. A TRIAL is different: the
-      // two run side by side, and one key cannot serve both.
-      //
-      // What it cannot serve them badly is the point. Both apps are built from one
-      // repo, so both would call themselves 'safecount': point that key at
-      // production and a sign-in begun in the test app is forwarded to production,
-      // the state still validates because the key matches, the code is still
-      // exchanged, and somebody files a count into the REAL spreadsheet believing
-      // they are in test. Silently wrong, not broken.
-      //
-      // The app-side key now comes from a Script Property, defaulting to
-      // 'safecount' - so production is correct with nothing set, and only the test
-      // script carries the override.
-      'safecount':      'https://script.google.com/macros/s/AKfycbzyfEGc760BCyS7OKbXQTzklaBdJGPnEG0c7-zkMFKurKRrlDPwiV7GDCXd9I5TINf-QQ/exec',
-      //
-      // DIRECT AGAIN, for now (2026-09-11). For a few hours this key forwarded to
-      // try/cb-test.html, which shows the app inside a cookie-free frame and gets past
-      // Google's account router (RBAC CLAUDE.md §49 - proven end to end on an iPhone
-      // signed into several accounts). Switched back while the owner tests UI changes
-      // on the test app: inside the frame, Chrome forgets the app's saved language and
-      // theme, which reads as a bug that is not there. The framed page stays; pointing
-      // this key back at it is this one line.
-      'safecount-test': 'https://script.google.com/macros/s/AKfycbw8ajAFSUJyMi9dPfTC3Wc7kSqZoNbqsPvEe8a5jXku-miS4NXgKbr__4GgocjI5cUb/exec'
+      // Both apps are built from one repo, so both would call themselves
+      // 'safecount': point that key at the test app and somebody files a count into
+      // the wrong spreadsheet. Silently wrong, not broken. The app-side key comes
+      // from a Script Property, defaulting to 'safecount', so production is correct
+      // with nothing set and only the test script carries the override.
+      'safecount':      'https://jacmar-restaurants-inc.github.io/portal/cash-balancing/',
+      'safecount-test': 'https://jacmar-restaurants-inc.github.io/portal/cash-balancing-test/'
     };
 
     var incoming = new URLSearchParams(window.location.search);
